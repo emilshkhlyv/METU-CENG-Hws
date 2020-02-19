@@ -1,0 +1,193 @@
+#/* $begin ncopy-ys */
+##################################################################
+# ncopy.ys - Copy a src block of len words to dst.
+# Return the number of positive words (>0) contained in src.
+#
+# Emil Shikhaliyev 2280386
+#
+# I implemented C code with 8-way unrolling.
+# I added iaddq instruction to pipe-full.hcl file with setting condition codes feature.
+#
+##################################################################
+# Do not modify this portion
+# Function prologue.
+# %rdi = src, %rsi = dst, %rdx = len
+ncopy:
+
+##################################################################
+# You can modify this portion
+	# Loop header
+	xorq 	%rax,%rax	# count = 0;	
+	iaddq 	-7, %rdx	# Testing the value of len, is greater or equal to 8 or not
+	jg 	Zero		# If it greater than 7, go to loop of 8-way unrolling
+
+	iaddq	7, %rdx		# It not add 7
+    	mrmovq (%rdi), %r9	# get value of first element and store it in %r9 
+				# I do that for breaking data dependency, and increasing the speed of execution
+
+    	jg Rem       		# If it is greater than zero, go to Rem part
+    	ret                 	# If it is equal to zero, just return
+	
+
+Zero:	# 8-way unrolling part
+	mrmovq	(%rdi), %rcx	# get value of the first   element of src, and store it in %rcx
+	mrmovq 	8(%rdi), %r8	# get value of the second  element of src, and store it in %r8
+	mrmovq	16(%rdi), %r9	# get value of the third   element of src, and store it in %r9
+	mrmovq	24(%rdi), %r10	# get value of the fourth  element of src, and store it in %r10
+	mrmovq	32(%rdi), %r11 	# get value of the fifth   element of src, and store it in %r11
+	mrmovq	40(%rdi), %r12	# get value of the sixth   element of src, and store it in %r12
+	mrmovq	48(%rdi), %r13	# get value of the seventh element of src, and store it in %r13
+	mrmovq	56(%rdi), %r14	# get value of the eighth  element of src, and store it in %r14
+
+	rmmovq	%rcx, (%rsi)	# get value of %rcx, and store it as first   element of dest
+	rmmovq	%r8,  8(%rsi)	# get value of %r8,  and store it as second  element of dest
+	rmmovq	%r9,  16(%rsi)	# get value of %r9,  and store it as third   element of dest
+	rmmovq	%r10, 24(%rsi)	# get value of %r10, and store it as fourth  element of dest
+	rmmovq	%r11, 32(%rsi)	# get value of %r11, and store it as fifth   element of dest
+	rmmovq	%r12, 40(%rsi)	# get value of %r12, and store it as sixth   element of dest
+	rmmovq	%r13, 48(%rsi)	# get value of %r13, and store it as seventh element of dest
+	rmmovq	%r14, 56(%rsi)	# get value of %r14, and store it as eighth  element of dest
+
+	andq 	%rcx, %rcx	# control first element
+	jle	One		# if it less than or equal to 0, skip increment, and jump to next element control
+	iaddq	1, %rax		# if not, ++count
+
+One:	
+	andq	%r8, %r8	# control second element
+	jle 	Two		# if it less than or equal to 0, skip increment, and jump to next element control
+	iaddq	1, %rax		# if not, ++count
+
+Two:
+	andq	%r9, %r9	# control third element 
+	jle	Three		# if it less than or equal to 0, skip increment, and jump to next element control
+	iaddq	1, %rax		# if not, ++count
+
+Three:
+	andq	%r10, %r10	# control fourth element
+	jle	Four		# if it less than or equal to 0, skip increment, and jump to next element control
+	iaddq	1, %rax		# if not, ++count
+
+Four:
+	andq	%r11, %r11	# control fifth element
+	jle	Five		# if it less than or equal to 0, skip increment, and jump to next element control
+	iaddq	1, %rax		# if not, ++count
+
+Five:
+	andq	%r12, %r12	# control sixth element
+	jle	Six		# if it less than or equal to 0, skip increment, and jump to next element control
+	iaddq	1, %rax		# if not, ++count
+
+Six:
+	andq	%r13, %r13	# control seventh element
+	jle	Seven		# if it less than or equal to 0, skip increment, and jump to next element control
+	iaddq	1, %rax		# if not, ++count
+
+Seven:
+	andq	%r14, %r14	# control eighth element
+	jle	Baki		# if it less than or equal to 0, skip increment 
+	iaddq	1, %rax		# if not, ++count
+
+Baki:
+	iaddq	64, %rdi	# (src=src+8)
+	iaddq	64, %rsi	# (dest=dest+8)
+	iaddq	-8, %rdx	# (len=len-8)
+	jg	Zero		# if len is greater than 0, jump to Zero again
+	
+Rest:
+    	iaddq 	7, %rdx       	# if not len = len+7   
+    	mrmovq 	(%rdi), %r9	# get the first element of src, store it in %r9
+    	je Done          	# if (len==0), return 
+
+Rem:
+	mrmovq	8(%rdi), %r11	# get the second element of src, store it in %r11
+	rmmovq  %r9, (%rsi)	# get the value of %r9, and store it as first element of dest
+
+	andq	%r9, %r9	# control the value of first element
+	jle	Remo		# If it is less than or equal to 0, then skip increment
+	iaddq	1, %rax		# otherwise, ++count
+
+Remo:
+	iaddq	-1, %rdx	# --len
+	jg	Rem2		# if(len > 0), continue to executing
+	ret			# otherwise, return
+    	
+Rem2:
+	mrmovq	16(%rdi), %r9	# get the third element of src, and store it in %r9
+	rmmovq	%r11, 8(%rsi)	# get the value of %r11, and store it as second element of dest
+		
+	andq 	%r11, %r11	# control the value %r11
+	jle	Remo2		# if it is less than or equal to 0, skip increment
+	iaddq 	1, %rax		# otherwise, ++count
+
+Remo2:	   
+	iaddq	-1, %rdx	# --len
+	jg	Rem3		# if (len > 0), continue
+	ret			# otherwise, return
+
+Rem3:	
+	mrmovq	24(%rdi), %r11	# get the fourth element of src, and store it in %r11
+	rmmovq	%r9, 16(%rsi)	# get the value of %9, and store it as third element of dest
+	
+	andq 	%r9, %r9	# control the value of second element
+	jle	Remo3		# if it is less than or equal to 0, skip increment
+	iaddq 	1, %rax		# otherwise, ++count
+
+Remo3:	   
+	iaddq	-1, %rdx	# --len
+	jg	Rem4		# if (len > 0), continue to executing
+	ret			# otherwise, return
+
+Rem4: 
+	mrmovq	32(%rdi), %r9	# get the fifth element of src, and store it in %r9
+	rmmovq	%r11, 24(%rsi) 	# get the value of %r11, and store it as fourth element of dest
+		
+	andq 	%r11, %r11	# control the value of fourth element of dest
+	jle	Remo4		# if it is less than or equal to 0, skip increment
+	iaddq 	1, %rax		# otherwise, ++count
+
+Remo4:	   
+	iaddq	-1, %rdx	# --len
+	jg	Rem5		# if (len > 0), continue to executing
+	ret			# otherwise, return
+
+Rem5: 	
+	mrmovq	40(%rdi), %r11	# get the sixth element of src, and store it in %r11
+	rmmovq	%r9, 32(%rsi)	# get the value of %r9, and store it as fifth element of dest
+	
+	andq 	%r9, %r9	# control the fifth element of dest
+	jle	Remo5		# if it is less than or equal to 0, skip increment
+	iaddq 	1, %rax		# otherwise, ++count
+
+Remo5:	   
+	iaddq	-1, %rdx	# --len
+	jg	Rem6		# if (len > 0), continue to executing
+	ret			# otherwise, return
+
+Rem6: 
+	mrmovq	48(%rdi), %r9	# get the seventh element of src, and store it in %r9
+	rmmovq	%r11, 40(%rsi)	# get the value of %r11, and store it as sixth element of dest
+	
+	andq 	%r11, %r11	# control the sixth element of dest
+	jle	Remo6		# if it is less than or equal to 0, skip increment
+	iaddq 	1, %rax		# otherwise, ++count
+
+Remo6:	   
+	iaddq	-1, %rdx	# --len
+	jg	Rem7		# if (len > 0), continue to executing
+	ret			# otherwise, return
+
+Rem7: 
+	rmmovq	%r9, 48(%rsi)	# get the value of %r9, and store it as seventh element of dest
+			
+	andq 	%r9, %r9	# control the value of seventh element of dest
+	jle	Done		# if it is less than or equal to 0, skip increment
+	iaddq 	1, %rax		# otherwise, ++count
+
+# Do not modify the following section of code
+# Function epilogue.
+Done:
+	ret			# return statement 
+##################################################################
+# Keep the following label at the end of your function
+End:
+#/* $end ncopy-ys */

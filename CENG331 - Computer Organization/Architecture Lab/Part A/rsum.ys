@@ -1,0 +1,52 @@
+#2280386
+#Emil Shikhaliyev
+
+.pos 0
+
+init:
+        irmovq stack, %rsp
+        call main
+        halt
+
+# Sample linked list
+.align 8
+        ele1:
+                .quad 0x00a
+                .quad ele2
+        ele2:
+                .quad 0x0b0
+                .quad ele3
+        ele3:
+                .quad 0xc00
+                .quad 0
+
+#main
+main:
+        irmovq ele1, %rdi       #give ele1 as argument
+	irmovq $0x8, %rcx
+        call rsum_list          #call rsum_list() function
+        ret                     #return from memory
+
+# begin rsum_list
+rsum_list:
+        pushq 	%rbx
+	xorq 	%rax, %rax
+	andq 	%rdi, %rdi	#if(!ls)
+	je end        
+	mrmovq 	(%rdi),%rbx
+	rrmovq 	%rdi, %rdx
+	addq 	%rcx, %rdx
+	mrmovq 	(%rdx),%rdi
+        call   	rsum_list	#call rsum_list
+        addq   	%rbx,%rax	#val+rest
+
+end:
+        popq   %rbx
+        ret   
+# end of rsum_list
+
+.pos 0x200
+
+stack:
+
+

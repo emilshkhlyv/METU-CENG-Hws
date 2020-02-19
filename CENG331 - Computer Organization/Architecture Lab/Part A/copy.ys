@@ -1,0 +1,53 @@
+#2280386
+#Emil Shikhaliyev
+
+.pos 0
+
+init:
+        irmovq stack, %rsp
+        call main
+        halt
+
+.align 8
+# Source block
+src:
+	.quad 0x00a
+	.quad 0x0b0
+	.quad 0xc00
+
+#Destination block
+dest:
+	.quad 0x111
+	.quad 0x222
+	.quad 0x333
+
+main:
+	irmovq	src, 	%rdi
+	irmovq 	dest, 	%rsi
+	irmovq	0x3, 	%rdx
+	call copy_block	
+	ret
+
+copy_block:
+	xorq	%rax, 	%rax
+	irmovq	$0x1, 	%r9	
+	irmovq 	$0x8, 	%r10
+	jmp	test
+
+inside:
+	mrmovq 	(%rdi),	%rbx
+	rmmovq	%rbx,	(%rsi)
+	xorq	%rbx,	%rax
+	subq	%r9, 	%rdx
+	addq	%r10,	%rdi
+	addq	%r10,	%rsi
+
+test:
+	andq 	%rdx,	%rdx
+	jne	inside
+
+end:
+	ret
+
+.pos 0x200	
+	stack:
